@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const Express = require('express')
 const { spawnSync } = require( 'child_process' )
 const compilerLanguages = require('./compilerLanguages')
@@ -31,7 +33,7 @@ global.payload2 = {
 }
 
 app.get('/', (req,res) => {
-    const { language, code } = global.payload
+    const { language, code } = global.payload2
     const command = spawnSync( 'docker', compilerLanguages.get(language)(code) )
     
     res.json({

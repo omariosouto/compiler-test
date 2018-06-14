@@ -7,7 +7,7 @@ languages.set('javascript', function(code) {
 })
 
 languages.set('java', function(code) {
-    const matches = payload.code.match(/public\s(\w+\s)?[class]{5}\s(\w+)/)
+    const matches = payload.code.match(/[public]{6}\s(\w+\s)?[class]{5}\s(\w+)/)
     const classNameWithMainMethod = matches[2]
 
     const javaDockerCommand = `run -i --rm -w /app openjdk:9-jdk sh -c`.split(' ')
