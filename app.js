@@ -1,10 +1,13 @@
 require('dotenv').config()
+const Restify = require('restify')
 require('./mocks')
-const Express = require('express')
+
 const { spawn } = require( 'child_process' )
 const terminate = require('terminate')
 const PubSub = require('pubsub-js')
-const app = new Express()
+
+const app = Restify.createServer()
+app.use(Restify.plugins.bodyParser({mapParams: true}))
 
 const compilerLanguages = require('./compilerLanguages')
 const dockerContainerKiller = require('./src/dockerContainerKiller')
@@ -77,7 +80,7 @@ app.get('/', (req,res) => {
         // console.log(`[processCompiler:${containerId}] Processo que iniciou o container ${containerId} foi morto!`);
         // console.log(`[processCompiler:${containerId}] processCompilerOutput:`, processCompilerOutput)
         // console.log(`[processCompiler:${containerId}] processCompilerError:`, processCompilerError)
-        res.json({
+        res.send({
             processCompilerOutput,
             processCompilerError,
             processCompilerStatus
