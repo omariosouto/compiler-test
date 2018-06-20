@@ -26,7 +26,7 @@ app.get('/', (req,res) => {
     })
     // 1.1 - Código para matar o processo atual
     let processCompilerFinishing = false
-    PubSub.subscribe('DOCKER_CONTAINER_KILLER', (channel, msg) => {
+    PubSub.subscribe('PROCESSCOMPILER_AND_DOCKERCONTAINER_KILLER', (channel, msg) => {
         // console.log(`[SHOULD KILL EVERY THING! -[[${msg}]]- ]`)
         if(!processCompilerFinishing) {
             processCompilerStatus = msg
@@ -49,10 +49,10 @@ app.get('/', (req,res) => {
 
         if(processCompilerOutputCounter === 1) {
             // console.log(`Container Subiu! Iniciar o Contador do Timeout`)
-            PubSub.publish('DOCKER_CONTAINER_START_TIMEOUT')
+            PubSub.publish('PROCESSCOMPILER_AND_DOCKERCONTAINER_START_TIMEOUT')
         } else if(processCompilerOutput.toString().length > 500) {
             // console.log(`Matar o container`)
-            PubSub.publish('DOCKER_CONTAINER_KILLER', 'OutPut Too Long')
+            PubSub.publish('PROCESSCOMPILER_AND_DOCKERCONTAINER_KILLER', 'OutPut Too Long')
         } else {
             // console.log('Incrementa output')
             processCompilerOutput += data
@@ -65,10 +65,9 @@ app.get('/', (req,res) => {
     // 3 - Iniciando TimeOut para o Container
     const containerExecTimeLimit = 10 * 1000
     let containerTimeOut 
-    
-    PubSub.subscribe('DOCKER_CONTAINER_START_TIMEOUT', () => {
+    PubSub.subscribe('PROCESSCOMPILER_AND_DOCKERCONTAINER_START_TIMEOUT', () => {
         cotainerTimeOut = setTimeout(() => {
-            PubSub.publish('DOCKER_CONTAINER_KILLER', 'Time Out')
+            PubSub.publish('PROCESSCOMPILER_AND_DOCKERCONTAINER_KILLER', 'Time Out')
         }, containerExecTimeLimit)    
     })
     
