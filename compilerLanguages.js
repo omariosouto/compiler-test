@@ -1,7 +1,7 @@
 const languages = new Map()
 
 languages.set('javascript', function(code, containerId) {     
-    const javascriptDockerCommand = `run --name node${containerId} -i --rm node node -p`.split(' ')
+    const javascriptDockerCommand = `run --name javascript${containerId} -i --rm node node -p`.split(' ')
     javascriptDockerCommand.push(code)
     return javascriptDockerCommand
 })

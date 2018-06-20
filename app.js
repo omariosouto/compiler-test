@@ -1,100 +1,91 @@
 require('dotenv').config()
-
+require('./mocks')
 const Express = require('express')
-const { spawn, spawnSync } = require( 'child_process' )
-const compilerLanguages = require('./compilerLanguages')
+const { spawn } = require( 'child_process' )
 const terminate = require('terminate')
+const PubSub = require('pubsub-js')
 const app = new Express()
 
+const compilerLanguages = require('./compilerLanguages')
+const dockerContainerKiller = require('./src/dockerContainerKiller')
 
-global.payload = {
-    code: `
-    public class Teste {
-        public static void main(String[] args) {
-            System.out.println("Hello PANCO!!!");
-            new Teste3().teste();
-        } 
-    }
-    
-    class Teste3 {
-        public void teste() {
-            System.out.println("Hello fodac do teste3!");
-        } 
-    }`,
-    language: 'java'
-}
-
-global.payload2 = {
-    code: `
-        const msg = 'alo alo w brazil'
-        console.log('JS FTW');
-        console.log(msg);
-        while(true) {
-            console.log('hi')
-        }
-    `,
-    language: 'javascript'
-}
-
-
-    
-
-    // const command = spawn( 'docker', compilerLanguages.get(language)(code) )
-    
-    // command.stdout.on('data', (data) => {
-    //     spawnSync('docker', 'rm --force node1'.split(' '))
-    //     console.log('output', data)
-    // });
-    
-    // command.stderr.on('data', (data) => {
-        //     console.log('error', data)
-    // });
-
-global.counter = 0
 
 app.get('/', (req,res) => {
     let counter = global.counter++
     console.log(counter, 'Request');
-    const { language, code } = global.payload2
-
+    const { language, code } = global.payload
+    
+    // 0 - Gerar ID
     const containerId = Math.floor(Math.random() * 1000)
+    
 
-
+    // 1 - Iniciando o container
     console.log(`${counter} - Rodando o container ${containerId}`)
-    const child = spawn( 'docker', compilerLanguages.get(language)(code, containerId), {
+    const processCompiler = spawn( 'docker', compilerLanguages.get(language)(code, containerId), {
         detached: true
     })
+    // 1.1 - Código para matar o processo atual
+    let processCompilerFinishing = false
+    PubSub.subscribe('DOCKER_CONTAINER_KILLER', (channel, msg) => {
+        // console.log(`[SHOULD KILL EVERY THING! -[[${msg}]]- ]`)
+        if(!processCompilerFinishing) {
+            processCompilerStatus = msg
+            processCompilerFinishing = true
+            terminate(processCompiler.pid, function (err) {
+                if (!err) {
+                    dockerContainerKiller(containerId, language)
+                } else {
+                    console.log(`[processCompiler:${containerId}] Processo já morto x.x`)
+                }
+            })
+        }
+    })
 
-    // Pegando o Output e os Erros
-    let resOutput = 'output'
-    let resError = 'error'
-    // Limitar a 10: child.stdout.on('data', (data) => resOutput += data);    
-    // Limitar a 10: child.stderr.on('data', (data) => resError += data);
-    
-    // Tempo limite de execução
-    const limitTime = 5 * 1000
-    const to = setTimeout(function(){
-        console.log(`${counter} - Ordenando matar o processo`);
-        terminate(child.pid, function (err) {
-            if (!err) {
-                console.log('done'); // terminating the Processes succeeded.
-                spawn('docker', `rm --force node${containerId}`.split(' '))
-                    .on('exit', () => console.log(`container morto: ${containerId}`))
+    // 2 - Gerenciando Outputs e erros do processo que subiu o container
+    let processCompilerOutput = '', processCompilerError = '', processCompilerStatus = ''
+    let processCompilerOutputCounter = 0
+    processCompiler.stdout.on('data', (data) => { 
+        processCompilerOutputCounter++
 
-            }
-          });
-          
-    }, limitTime);  
+        if(processCompilerOutputCounter === 1) {
+            // console.log(`Container Subiu! Iniciar o Contador do Timeout`)
+            PubSub.publish('DOCKER_CONTAINER_START_TIMEOUT')
+        } else if(processCompilerOutput.toString().length > 500) {
+            // console.log(`Matar o container`)
+            PubSub.publish('DOCKER_CONTAINER_KILLER', 'OutPut Too Long')
+        } else {
+            // console.log('Incrementa output')
+            processCompilerOutput += data
+        }
+    });    
+    processCompiler.stderr.on('data', (data) => { 
+        processCompilerError += data
+    }); 
+
+    // 3 - Iniciando TimeOut para o Container
+    const containerExecTimeLimit = 10 * 1000
+    let containerTimeOut 
     
-    child.on('exit', function(){
-        clearTimeout(to); // if finish okay, don't kill docker container, because it's finished okay
-        console.log(`${counter} - Processo morto!`);
+    PubSub.subscribe('DOCKER_CONTAINER_START_TIMEOUT', () => {
+        cotainerTimeOut = setTimeout(() => {
+            PubSub.publish('DOCKER_CONTAINER_KILLER', 'Time Out')
+        }, containerExecTimeLimit)    
+    })
+    
+    // 4 - Saida do processo que subiu o container
+    processCompiler.on('exit', function(){
+        clearTimeout(containerTimeOut); 
+        // console.log(`[processCompiler:${containerId}] Processo que iniciou o container ${containerId} foi morto!`);
+        // console.log(`[processCompiler:${containerId}] processCompilerOutput:`, processCompilerOutput)
+        // console.log(`[processCompiler:${containerId}] processCompilerError:`, processCompilerError)
         res.json({
-            resOutput,
-            resError
+            processCompilerOutput,
+            processCompilerError,
+            processCompilerStatus
         })
     });
 
 })
 
 module.exports = app
+
