@@ -79,7 +79,6 @@ app.post('/', (req,res) => {
     // 4 - Saida do processo que subiu o container
     processCompiler.on('exit', function(){
         clearTimeout(containerTimeOut); 
-        console.log('output: ' + processCompilerOutput)
         // console.log(`[processCompiler:${containerId}] Processo que iniciou o container ${containerId} foi morto!`);
         // console.log(`[processCompiler:${containerId}] processCompilerOutput:`, processCompilerOutput)
         // console.log(`[processCompiler:${containerId}] processCompilerError:`, processCompilerError)
