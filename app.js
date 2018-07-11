@@ -13,11 +13,13 @@ const compilerLanguages = require('./compilerLanguages')
 const dockerContainerKiller = require('./src/dockerContainerKiller')
 
 
-app.get('/', (req,res) => {
+app.post('/', (req,res) => {
     let counter = global.counter++
     console.log(counter, 'Request');
-    const { language, code } = global.payload
     
+    const language = req.body.language
+    const code = req.body.code
+  
     // 0 - Gerar ID
     const containerId = Math.floor(Math.random() * 1000)
     
@@ -27,6 +29,7 @@ app.get('/', (req,res) => {
     const processCompiler = spawn( 'docker', compilerLanguages.get(language)(code, containerId), {
         detached: true
     })
+    
     // 1.1 - Código para matar o processo atual
     let processCompilerFinishing = false
     PubSub.subscribe('PROCESSCOMPILER_AND_DOCKERCONTAINER_KILLER', (channel, msg) => {
@@ -46,20 +49,19 @@ app.get('/', (req,res) => {
 
     // 2 - Gerenciando Outputs e erros do processo que subiu o container
     let processCompilerOutput = '', processCompilerError = '', processCompilerStatus = ''
-    let processCompilerOutputCounter = 0
+    
     processCompiler.stdout.on('data', (data) => { 
-        processCompilerOutputCounter++
 
-        if(processCompilerOutputCounter === 1) {
-            // console.log(`Container Subiu! Iniciar o Contador do Timeout`)
-            PubSub.publish('PROCESSCOMPILER_AND_DOCKERCONTAINER_START_TIMEOUT')
-        } else if(processCompilerOutput.toString().length > 500) {
+        if(processCompilerOutput.toString().length > 500) {
             // console.log(`Matar o container`)
             PubSub.publish('PROCESSCOMPILER_AND_DOCKERCONTAINER_KILLER', 'OutPut Too Long')
         } else {
             // console.log('Incrementa output')
-            processCompilerOutput += data
+            PubSub.publish('PROCESSCOMPILER_AND_DOCKERCONTAINER_START_TIMEOUT')
+            processCompilerOutput += data.toString()
         }
+
+        
     });    
     processCompiler.stderr.on('data', (data) => { 
         processCompilerError += data
@@ -77,6 +79,7 @@ app.get('/', (req,res) => {
     // 4 - Saida do processo que subiu o container
     processCompiler.on('exit', function(){
         clearTimeout(containerTimeOut); 
+        console.log('output: ' + processCompilerOutput)
         // console.log(`[processCompiler:${containerId}] Processo que iniciou o container ${containerId} foi morto!`);
         // console.log(`[processCompiler:${containerId}] processCompilerOutput:`, processCompilerOutput)
         // console.log(`[processCompiler:${containerId}] processCompilerError:`, processCompilerError)
