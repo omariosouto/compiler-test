@@ -49,15 +49,16 @@ app.post('/', (req,res) => {
 
     // 2 - Gerenciando Outputs e erros do processo que subiu o container
     let processCompilerOutput = '', processCompilerError = '', processCompilerStatus = ''
-    
+    let firstOutput = true
     processCompiler.stdout.on('data', (data) => { 
-
-        if(processCompilerOutput.toString().length > 500) {
+        if(firstOutput) {
+            PubSub.publish('PROCESSCOMPILER_AND_DOCKERCONTAINER_START_TIMEOUT')
+            firstOutput = false;
+        } else if(processCompilerOutput.toString().length > 500) {
             // console.log(`Matar o container`)
             PubSub.publish('PROCESSCOMPILER_AND_DOCKERCONTAINER_KILLER', 'OutPut Too Long')
         } else {
             // console.log('Incrementa output')
-            PubSub.publish('PROCESSCOMPILER_AND_DOCKERCONTAINER_START_TIMEOUT')
             processCompilerOutput += data.toString()
         }
 
