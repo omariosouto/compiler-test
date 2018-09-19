@@ -17,8 +17,8 @@ app.post('/', (req,res) => {
     let counter = global.counter++
     console.log(counter, 'Request');
     
-    const language = req.body.language
-    const code = req.body.code
+    const language = global.payload2.language
+    const code = global.payload2.code
   
     const containerId = Math.floor(Math.random() * 1000)
     

@@ -1,0 +1,17 @@
+version: '3'
+services: 
+  compiler:
+    build:
+      dockerfile: ./compiler.dockerfile 
+      context: .
+    image: omariosouto/compiler
+    container_name: compiler
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      -  "80:3000"
+    networks:
+      - production-network
+networks:
+  production-network:
+    driver: bridge
