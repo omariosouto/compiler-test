@@ -7,7 +7,17 @@ const terminate = require('terminate')
 const PubSub = require('pubsub-js')
 
 const app = Restify.createServer()
+app.use(
+    function crossOrigin(req,res,next){
+        console.log('alo alo w brazil')
+      res.header("Access-Control-Allow-Origin", "*");
+      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+      return next();
+    }
+  );
+
 app.use(Restify.plugins.bodyParser({mapParams: true}))
+
 
 const compilerLanguages = require('./compilerLanguages')
 const dockerContainerKiller = require('./src/dockerContainerKiller')
@@ -16,9 +26,12 @@ const dockerContainerKiller = require('./src/dockerContainerKiller')
 app.post('/', (req,res) => {
     let counter = global.counter++
     console.log(counter, 'Request');
-    
-    const language = global.payload2.language
-    const code = global.payload2.code
+
+    const { body } = req
+
+    console.log(body.language || global.payload2.language)
+    const language = body.language || global.payload2.language
+    const code = body.code || global.payload2.code
   
     const containerId = Math.floor(Math.random() * 1000)
     
